@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login — Brew & Co</title>
+    <meta name="description" content="Sign in to your Brew & Co account to access your favorites and orders.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Login specific styles */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--cream) 0%, var(--beige) 100%);
+            padding: 40px 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .login-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 50px;
+            box-shadow: 0 25px 60px var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gold), var(--coffee-light));
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--coffee-medium), var(--coffee-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            color: var(--cream);
+            font-size: 28px;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .login-header h1 {
+            font-size: 32px;
+            color: var(--coffee-dark);
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .remember-me input {
+            width: auto;
+        }
+
+        .forgot-password {
+            color: var(--coffee-medium);
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .form-footer a {
+            color: var(--coffee-medium);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Cart restore notice */
+        .cart-restore-notice {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .cart-restore-notice.show {
+            display: block;
+        }
+
+        .cart-restore-notice i {
+            color: #3498db;
+            margin-right: 10px;
+        }
+
+        /* Admin login switch */
+        .admin-login-switch {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .admin-login-switch a {
+            color: var(--coffee-medium);
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .admin-login-switch a:hover {
+            text-decoration: underline;
+        }
+
+        /* Demo credentials */
+        .demo-credentials {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid var(--coffee-medium);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 25px;
+            font-size: 13px;
+        }
+
+        .demo-credentials h4 {
+            margin-bottom: 8px;
+            color: var(--coffee-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-credentials ul {
+            margin: 0;
+            padding-left: 20px;
+            color: var(--muted);
+        }
+
+        .demo-credentials li {
+            margin-bottom: 4px;
+        }
+
+        /* Social login */
+        .social-login {
+            margin-top: 25px;
+        }
+
+        .social-login p {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 15px;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .social-login p::before,
+        .social-login p::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30%;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .social-login p::before {
+            left: 0;
+        }
+
+        .social-login p::after {
+            right: 0;
+        }
+
+        .social-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .social-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: var(--radius-md);
+            background: white;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .social-btn:hover {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+
+        .social-btn.google {
+            color: #DB4437;
+        }
+
+        .social-btn.facebook {
+            color: #4267B2;
+        }
+
+        @media (max-width: 768px) {
+            .login-card {
+                padding: 30px;
+            }
+
+            .form-options {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .social-buttons {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 25px;
+            }
+
+            .login-header h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="login-page">
+    <div class="container login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">B&amp;Co</div>
+                <h1>Welcome Back</h1>
+                <p>Sign in to your account to continue</p>
+
+                <!-- Cart restore notice (hidden by default) -->
+                <div class="cart-restore-notice" id="cartRestoreNotice">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Your cart items will be restored after login.</span>
+                </div>
+            </div>
+
+            <form class="login-form" id="loginForm">
+                <div class="input-group">
+                    <label for="username">Username or Email *</label>
+                    <input type="text" id="username" required placeholder="johndoe or john@example.com">
+                    <div class="error-message" id="usernameError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" required>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <div class="form-options">
+                    <div class="remember-me">
+                        <input type="checkbox" id="remember">
+                        <label for="remember">Remember me</label>
+                    </div>
+                    <a href="#" class="forgot-password">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+
+                <!-- Social login (optional) -->
+                <div class="social-login">
+                    <p>Or continue with</p>
+                    <div class="social-buttons">
+                        <button type="button" class="social-btn google" onclick="socialLogin('google')">
+                            <i class="fab fa-google"></i> Google
+                        </button>
+                        <button type="button" class="social-btn facebook" onclick="socialLogin('facebook')">
+                            <i class="fab fa-facebook-f"></i> Facebook
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Demo credentials (for testing) -->
+                <div class="demo-credentials">
+                    <h4><i class="fas fa-vial"></i> Test Credentials</h4>
+                    <ul>
+                        <li><strong>Username:</strong> testuser</li>
+                        <li><strong>Email:</strong> test@example.com</li>
+                        <li><strong>Password:</strong> password123</li>
+                    </ul>
+                </div>
+
+                <div class="form-footer">
+                    Don't have an account? <a href="register.html" id="registerLink">Sign Up</a>
+                </div>
+
+                <div class="admin-login-switch">
+                    <a href="#" id="adminLoginToggle">
+                        <i class="fas fa-user-shield"></i> Admin Login
+                    </a>
+                </div>
+            </form>
+
+            <!-- Admin login form (hidden by default) -->
+            <form class="login-form" id="adminLoginForm" style="display: none; margin-top: 30px;">
+                <div class="input-group">
+                    <label for="adminUsername">Admin Username *</label>
+                    <input type="text" id="adminUsername" placeholder="admin">
+                    <div class="error-message" id="adminUsernameError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="adminPassword">Admin Password *</label>
+                    <input type="password" id="adminPassword">
+                    <div class="error-message" id="adminPasswordError"></div>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; background: var(--coffee-dark);">
+                    <i class="fas fa-user-shield"></i> Admin Sign In
+                </button>
+
+                <div class="admin-login-switch">
+                    <a href="#" id="userLoginToggle">
+                        <i class="fas fa-user"></i> Back to User Login
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="js/main.js"></script>
+<script src="js/auth.js"></script> <!-- Подключаем auth.js -->
+<script>
+    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+    let redirectUrl = '';
+    let savedCartData = null;
+    let hasCartItems = false;
+    let isAdminLogin = false;
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ==========
+    document.addEventListener('DOMContentLoaded', function() {
+        // Загружаем auth.js если еще не загружен
+        if (!window.auth) {
+            console.warn('auth.js not loaded, trying to load manually...');
+            loadScript('js/auth.js', initLogin);
+        } else {
+            initLogin();
+        }
+    });
+
+    // ========== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ==========
+    function initLogin() {
+        const loginForm = document.getElementById('loginForm');
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const cartNotice = document.getElementById('cartRestoreNotice');
+        const registerLink = document.getElementById('registerLink');
+        const adminLoginToggle = document.getElementById('adminLoginToggle');
+        const userLoginToggle = document.getElementById('userLoginToggle');
+
+        // Получаем параметры из URL
+        parseUrlParameters();
+
+        // Показываем уведомление о корзине если есть товары
+        if (hasCartItems && cartNotice) {
+            cartNotice.classList.add('show');
+
+            // Добавляем кнопку "View Cart"
+            const viewCartBtn = document.createElement('button');
+            viewCartBtn.innerHTML = '<i class="fas fa-eye"></i> View Cart';
+            viewCartBtn.style.cssText = `
+                margin-left: 10px;
+                padding: 4px 10px;
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+            `;
+            viewCartBtn.onclick = showCartPreview;
+            cartNotice.appendChild(viewCartBtn);
+        }
+
+        // Обновляем ссылку регистрации с редиректом
+        if (registerLink && redirectUrl) {
+            registerLink.href = 'register.html?redirect=' + encodeURIComponent(redirectUrl) +
+                            (savedCartData ? '&cart=' + encodeURIComponent(savedCartData) : '');
+        }
+
+        // Обработчик обычного логина
+        if (loginForm) {
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                const rememberMe = document.getElementById('remember').checked;
+
+                // Очищаем ошибки
+                clearErrors('login');
+
+                let isValid = true;
+
+                // Валидация
+                if (!username) {
+                    showError('usernameError', 'Please enter username or email', 'login');
+                    isValid = false;
+                }
+
+                if (!password) {
+                    showError('passwordError', 'Please enter password', 'login');
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    await submitLogin({
+                        username,
+                        password
+                    }, rememberMe);
+                }
+            });
+        }
+
+        // Обработчик админ логина
+        if (adminLoginForm) {
+            adminLoginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const username = document.getElementById('adminUsername').value.trim();
+                const password = document.getElementById('adminPassword').value;
+
+                // Очищаем ошибки
+                clearErrors('admin');
+
+                let isValid = true;
+
+                // Валидация
+                if (!username) {
+                    showError('adminUsernameError', 'Please enter admin username', 'admin');
+                    isValid = false;
+                }
+
+                if (!password) {
+                    showError('adminPasswordError', 'Please enter admin password', 'admin');
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    await submitAdminLogin({
+                        username,
+                        password
+                    });
+                }
+            });
+        }
+
+        // Переключение между обычным и админ логином
+        if (adminLoginToggle) {
+            adminLoginToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                switchToAdminLogin();
+            });
+        }
+
+        if (userLoginToggle) {
+            userLoginToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                switchToUserLogin();
+            });
+        }
+
+        // Автозаполнение тестовых данных (для разработки)
+        autoFillTestCredentials();
+    }
+
+    // ========== ФУНКЦИЯ ОБЫЧНОГО ЛОГИНА ==========
+    async function submitLogin(credentials, rememberMe) {
+        const loginForm = document.getElementById('loginForm');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        try {
+            // Показываем загрузку
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+            submitBtn.disabled = true;
+
+            // Проверяем, загружен ли auth.js
+            if (!window.auth || typeof window.auth.login !== 'function') {
+                throw new Error('Authentication system not loaded. Please refresh the page.');
+            }
+
+            // Вызываем логин из auth.js
+            const result = await window.auth.login(credentials);
+
+            if (result.success) {
+                // Показываем успех
+                if (typeof showToast === 'function') {
+                    showToast('Login successful! Welcome back!', 'success');
+                }
+
+                // Восстанавливаем корзину если есть
+                if (savedCartData) {
+                    try {
+                        localStorage.setItem('brewAndCoCart', savedCartData);
+                        if (typeof showToast === 'function') {
+                            showToast('Your cart has been restored', 'info');
+                        }
+                    } catch (e) {
+                        console.error('Failed to restore cart:', e);
+                    }
+                }
+
+                // Сохраняем remember me если нужно
+                if (rememberMe) {
+                    console.log('Remember me enabled');
+                    // Можно сохранить дополнительную информацию
+                }
+
+                // Редирект
+                setTimeout(() => {
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 1500);
+
+            } else {
+                // Обработка ошибок с сервера
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+                if (result.error) {
+                    // Показываем конкретную ошибку
+                    if (typeof showToast === 'function') {
+                        showToast('Login failed: ' + result.error, 'error');
+                    }
+
+                    // Показываем ошибку у соответствующего поля
+                    const errorLower = result.error.toLowerCase();
+                    if (errorLower.includes('username') || errorLower.includes('email')) {
+                        showError('usernameError', 'Invalid username or email', 'login');
+                    } else if (errorLower.includes('password') || errorLower.includes('credentials')) {
+                        showError('passwordError', 'Invalid password', 'login');
+                    } else {
+                        showError('usernameError', 'Login failed: ' + result.error, 'login');
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('Login error:', error);
+
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
+            if (typeof showToast === 'function') {
+                showToast('Login failed. Please try again.', 'error');
+            }
+
+            // Показываем сообщение о проблеме с подключением
+            if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                showError('usernameError', 'Cannot connect to server. Please check if backend is running on localhost:5000', 'login');
+            }
+        }
+    }
+
+    // ========== ФУНКЦИЯ АДМИН ЛОГИНА ==========
+    async function submitAdminLogin(credentials) {
+        const adminLoginForm = document.getElementById('adminLoginForm');
+        const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        try {
+            // Показываем загрузку
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Admin Sign In...';
+            submitBtn.disabled = true;
+
+            // Проверяем, загружен ли auth.js
+            if (!window.auth || typeof window.auth.adminLogin !== 'function') {
+                throw new Error('Authentication system not loaded. Please refresh the page.');
+            }
+
+            // Вызываем админ логин из auth.js
+            const result = await window.auth.adminLogin(credentials);
+
+            if (result.success) {
+                // Показываем успех
+                if (typeof showToast === 'function') {
+                    showToast('Admin login successful!', 'success');
+                }
+
+                // Редирект на админ панель
+                setTimeout(() => {
+                    // Проверяем, есть ли админ панель на localhost:3000
+                    const adminPanelUrl = 'http://localhost:3000';
+
+                    // Проверяем доступность админ панели
+                    fetch(adminPanelUrl)
+                        .then(() => {
+                            window.location.href = adminPanelUrl;
+                        })
+                        .catch(() => {
+                            // Если админ панель недоступна, идем на главную
+                            if (redirectUrl) {
+                                window.location.href = redirectUrl;
+                            } else {
+                                window.location.href = 'index.html';
+                            }
+                        });
+                }, 1500);
+
+            } else {
+                // Обработка ошибок с сервера
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+                if (result.error) {
+                    // Показываем конкретную ошибку
+                    if (typeof showToast === 'function') {
+                        showToast('Admin login failed: ' + result.error, 'error');
+                    }
+
+                    // Показываем ошибку у соответствующего поля
+                    const errorLower = result.error.toLowerCase();
+                    if (errorLower.includes('username')) {
+                        showError('adminUsernameError', 'Invalid admin username', 'admin');
+                    } else if (errorLower.includes('password') || errorLower.includes('credentials')) {
+                        showError('adminPasswordError', 'Invalid admin password', 'admin');
+                    } else {
+                        showError('adminUsernameError', 'Admin login failed: ' + result.error, 'admin');
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('Admin login error:', error);
+
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
+            if (typeof showToast === 'function') {
+                showToast('Admin login failed. Please try again.', 'error');
+            }
+
+            // Показываем сообщение о проблеме с подключением
+            if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                showError('adminUsernameError', 'Cannot connect to server. Please check if backend is running on localhost:5000', 'admin');
+            }
+        }
+    }
+
+    // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
+    // Парсинг параметров URL
+    function parseUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        redirectUrl = urlParams.get('redirect') || '';
+        const cartParam = urlParams.get('cart');
+
+        if (cartParam) {
+            try {
+                savedCartData = decodeURIComponent(cartParam);
+                const cartItems = JSON.parse(savedCartData);
+                hasCartItems = Array.isArray(cartItems) && cartItems.length > 0;
+            } catch (e) {
+                console.error('Failed to parse cart data:', e);
+                savedCartData = null;
+                hasCartItems = false;
+            }
+        }
+    }
+
+    // Предпросмотр корзины
+    function showCartPreview() {
+        if (!savedCartData) return;
+
+        try {
+            const cartItems = JSON.parse(savedCartData);
+            const itemCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
+            const totalAmount = cartItems.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+
+            alert(`🛒 Your Cart Preview:\n\n` +
+                  `Items: ${itemCount}\n` +
+                  `Total: $${totalAmount.toFixed(2)}\n\n` +
+                  `These items will be restored after login.`);
+        } catch (e) {
+            console.error('Error showing cart preview:', e);
+        }
+    }
+
+    // Переключение на админ логин
+    function switchToAdminLogin() {
+        isAdminLogin = true;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminLoginForm').style.display = 'block';
+        document.querySelector('.login-header h1').textContent = 'Admin Login';
+        document.querySelector('.login-header p').textContent = 'Sign in to access admin panel';
+    }
+
+    // Переключение на пользовательский логин
+    function switchToUserLogin() {
+        isAdminLogin = false;
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('adminLoginForm').style.display = 'none';
+        document.querySelector('.login-header h1').textContent = 'Welcome Back';
+        document.querySelector('.login-header p').textContent = 'Sign in to your account to continue';
+    }
+
+    // Автозаполнение тестовых данных
+    function autoFillTestCredentials() {
+        // Только в development режиме
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            // Автозаполнение обычных тестовых данных
+            document.getElementById('username').value = 'testuser';
+            document.getElementById('password').value = 'password123';
+
+            // Автозаполнение админ тестовых данных
+            document.getElementById('adminUsername').value = 'admin';
+            document.getElementById('adminPassword').value = 'admin123';
+        }
+    }
+
+    // Социальный логин (заглушка)
+    function socialLogin(provider) {
+        if (typeof showToast === 'function') {
+            showToast(`${provider.charAt(0).toUpperCase() + provider.slice(1)} login is not implemented yet`, 'info');
+        }
+        console.log(`Social login with ${provider}`);
+        // Здесь можно реализовать OAuth2 логин
+    }
+
+    // Показать ошибку
+    function showError(elementId, message, formType = 'login') {
+        const prefix = formType === 'admin' ? 'admin' : '';
+        const element = document.getElementById(prefix + elementId);
+        if (element) {
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+    }
+
+    // Очистить ошибки
+    function clearErrors(formType = 'login') {
+        const prefix = formType === 'admin' ? 'admin' : '';
+        const errorElements = document.querySelectorAll(`#${prefix}usernameError, #${prefix}passwordError`);
+        errorElements.forEach(element => {
+            element.textContent = '';
+            element.style.display = 'none';
+        });
+    }
+
+    // Загрузка скрипта
+    function loadScript(src, callback) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = callback;
+        script.onerror = function() {
+            console.error('Failed to load script:', src);
+            if (typeof showToast === 'function') {
+                showToast('Error loading authentication system', 'error');
+            }
+        };
+        document.head.appendChild(script);
+    }
+
+    // ========== ПРОВЕРКА СУЩЕСТВУЮЩЕЙ АВТОРИЗАЦИИ ==========
+
+    // Если пользователь уже авторизован, предлагаем выйти или продолжить
+    setTimeout(() => {
+        if (window.auth && window.auth.isAuthenticated()) {
+            const user = window.auth.getCurrentUser();
+            const userType = user.role === 'admin' ? 'Administrator' : 'User';
+
+            if (confirm(`You are already logged in as ${user.username} (${userType}).\n\nDo you want to logout and login as another user?`)) {
+                window.auth.logout();
+            } else {
+                // Перенаправляем на целевую страницу
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                } else if (user.role === 'admin') {
+                    window.location.href = 'http://localhost:3000';
+                } else {
+                    window.location.href = 'index.html';
+                }
+            }
+        }
+    }, 1000);
+
+    // ========== ФУНКЦИИ ДЛЯ ВОССТАНОВЛЕНИЯ ПАРОЛЯ ==========
+
+    document.querySelector('.forgot-password')?.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const email = prompt('Please enter your email address to reset password:');
+        if (email && isValidEmail(email)) {
+            if (typeof showToast === 'function') {
+                showToast('Password reset link has been sent to ' + email, 'info');
+            }
+            // Здесь можно реализовать реальный сброс пароля
+            console.log('Password reset requested for:', email);
+        } else if (email) {
+            alert('Please enter a valid email address');
+        }
+    });
+
+    function isValidEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // ========== КЛАВИШНЫЕ СОКРАЩЕНИЯ ==========
+
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + Enter для быстрого логина
+        if (e.ctrlKey && e.key === 'Enter') {
+            const activeForm = isAdminLogin ? document.getElementById('adminLoginForm') : document.getElementById('loginForm');
+            if (activeForm) {
+                activeForm.dispatchEvent(new Event('submit'));
+            }
+        }
+
+        // Esc для очистки формы
+        if (e.key === 'Escape') {
+            clearErrors(isAdminLogin ? 'admin' : 'login');
+        }
+    });
+</script>
+</body>
+</html>

@@ -108,34 +108,6 @@
         .strength-medium { background: #F59E0B; width: 66%; }
         .strength-strong { background: #10B981; width: 100%; }
 
-        .form-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .remember-me {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .remember-me input {
-            width: auto;
-        }
-
-        .forgot-password {
-            color: var(--coffee-medium);
-            font-size: 14px;
-            text-decoration: none;
-        }
-
-        .forgot-password:hover {
-            text-decoration: underline;
-        }
-
         .terms-agreement {
             display: flex;
             align-items: flex-start;
@@ -171,6 +143,37 @@
             text-decoration: underline;
         }
 
+        /* Cart restore notice */
+        .cart-restore-notice {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .cart-restore-notice.show {
+            display: block;
+        }
+
+        .cart-restore-notice i {
+            color: #3498db;
+            margin-right: 10px;
+        }
+
+        /* Login link in header */
+        .login-prompt {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .login-prompt a {
+            color: var(--coffee-medium);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
         @media (max-width: 768px) {
             .registration-card {
                 padding: 30px;
@@ -201,26 +204,39 @@
                 <div class="registration-logo">B&amp;Co</div>
                 <h1>Create Account</h1>
                 <p>Join Brew & Co to save favorites and track orders</p>
+
+                <!-- Cart restore notice (hidden by default) -->
+                <div class="cart-restore-notice" id="cartRestoreNotice">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Your cart items will be restored after registration.</span>
+                </div>
             </div>
 
             <form class="registration-form" id="registrationForm">
                 <div class="form-row">
                     <div class="input-group">
-                        <label for="firstName">First Name *</label>
-                        <input type="text" id="firstName" required>
+                        <label for="firstName">First Name</label>
+                        <input type="text" id="firstName" placeholder="John">
                         <div class="error-message" id="firstNameError"></div>
                     </div>
 
                     <div class="input-group">
-                        <label for="lastName">Last Name *</label>
-                        <input type="text" id="lastName" required>
+                        <label for="lastName">Last Name</label>
+                        <input type="text" id="lastName" placeholder="Doe">
                         <div class="error-message" id="lastNameError"></div>
                     </div>
                 </div>
 
                 <div class="input-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" required placeholder="johndoe">
+                    <small style="color: #666; font-size: 12px;">This will be your login name</small>
+                    <div class="error-message" id="usernameError"></div>
+                </div>
+
+                <div class="input-group">
                     <label for="email">Email Address *</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" required placeholder="john@example.com">
                     <div class="error-message" id="emailError"></div>
                 </div>
 
@@ -230,6 +246,7 @@
                     <div class="password-strength">
                         <div class="strength-meter" id="passwordStrength"></div>
                     </div>
+                    <small style="color: #666; font-size: 12px;">Minimum 6 characters</small>
                     <div class="error-message" id="passwordError"></div>
                 </div>
 
@@ -239,11 +256,19 @@
                     <div class="error-message" id="confirmError"></div>
                 </div>
 
+                <div class="input-group">
+                    <label for="phone">Phone Number (optional)</label>
+                    <input type="tel" id="phone" placeholder="+1 (555) 123-4567">
+                    <small style="color: #666; font-size: 12px;">For order notifications</small>
+                    <div class="error-message" id="phoneError"></div>
+                </div>
+
                 <div class="terms-agreement">
                     <input type="checkbox" id="terms" required>
                     <label for="terms">
                         I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a> *
                     </label>
+                    <div class="error-message" id="termsError"></div>
                 </div>
 
                 <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">
@@ -251,7 +276,7 @@
                 </button>
 
                 <div class="form-footer">
-                    Already have an account? <a href="index.html">Sign In</a>
+                    Already have an account? <a href="login.html" id="loginLink">Sign In</a>
                 </div>
             </form>
         </div>
@@ -259,132 +284,386 @@
 </div>
 
 <script src="js/main.js"></script>
-<script src="js/forms.js"></script>
+<script src="js/auth.js"></script> <!-- Подключаем auth.js -->
 <script>
-    // Registration form validation
+    // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+    let redirectUrl = '';
+    let savedCartData = null;
+    let hasCartItems = false;
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ==========
     document.addEventListener('DOMContentLoaded', function() {
+        // Загружаем auth.js если еще не загружен
+        if (!window.auth) {
+            console.warn('auth.js not loaded, trying to load manually...');
+            loadScript('js/auth.js', initRegistration);
+        } else {
+            initRegistration();
+        }
+    });
+
+    // ========== ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ==========
+    function initRegistration() {
         const form = document.getElementById('registrationForm');
         const passwordInput = document.getElementById('password');
         const passwordStrength = document.getElementById('passwordStrength');
+        const cartNotice = document.getElementById('cartRestoreNotice');
+        const loginLink = document.getElementById('loginLink');
 
+        // Получаем параметры из URL
+        parseUrlParameters();
+
+        // Показываем уведомление о корзине если есть товары
+        if (hasCartItems && cartNotice) {
+            cartNotice.classList.add('show');
+
+            // Добавляем кнопку "View Cart"
+            const viewCartBtn = document.createElement('button');
+            viewCartBtn.innerHTML = '<i class="fas fa-eye"></i> View Cart';
+            viewCartBtn.style.cssText = `
+                margin-left: 10px;
+                padding: 4px 10px;
+                background: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+            `;
+            viewCartBtn.onclick = showCartPreview;
+            cartNotice.appendChild(viewCartBtn);
+        }
+
+        // Обновляем ссылку логина с редиректом
+        if (loginLink && redirectUrl) {
+            loginLink.href = 'login.html?redirect=' + encodeURIComponent(redirectUrl) +
+                            (savedCartData ? '&cart=' + encodeURIComponent(savedCartData) : '');
+        }
+
+        // Обработчик отправки формы
         if (form) {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
-                // Get form values
+                // Получаем значения формы
                 const firstName = document.getElementById('firstName').value.trim();
                 const lastName = document.getElementById('lastName').value.trim();
+                const username = document.getElementById('username').value.trim();
                 const email = document.getElementById('email').value.trim();
                 const password = passwordInput.value;
                 const confirmPassword = document.getElementById('confirmPassword').value;
+                const phone = document.getElementById('phone').value.trim();
                 const terms = document.getElementById('terms').checked;
 
-                // Clear previous errors
+                // Очищаем предыдущие ошибки
                 clearErrors();
 
                 let isValid = true;
 
-                // Validate first name
-                if (firstName.length < 2) {
-                    showError('firstNameError', 'First name must be at least 2 characters');
+                // Валидация username
+                if (username.length < 3) {
+                    showError('usernameError', 'Username must be at least 3 characters');
                     isValid = false;
                 }
 
-                // Validate last name
-                if (lastName.length < 2) {
-                    showError('lastNameError', 'Last name must be at least 2 characters');
-                    isValid = false;
-                }
-
-                // Validate email
+                // Валидация email
                 if (!isValidEmail(email)) {
                     showError('emailError', 'Please enter a valid email address');
                     isValid = false;
                 }
 
-                // Validate password
+                // Валидация пароля
                 if (password.length < 6) {
                     showError('passwordError', 'Password must be at least 6 characters');
                     isValid = false;
                 }
 
-                // Validate password confirmation
+                // Подтверждение пароля
                 if (password !== confirmPassword) {
                     showError('confirmError', 'Passwords do not match');
                     isValid = false;
                 }
 
-                // Validate terms
+                // Валидация согласия
                 if (!terms) {
-                    showError('confirmError', 'You must agree to the terms and conditions');
+                    showError('termsError', 'You must agree to the terms and conditions');
                     isValid = false;
                 }
 
                 if (isValid) {
-                    // In a real app, this would be an API call
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    const originalText = submitBtn.innerHTML;
-
-                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-                    submitBtn.disabled = true;
-
-                    setTimeout(() => {
-                        submitBtn.innerHTML = originalText;
-                        submitBtn.disabled = false;
-
-                        // Show success message
-                        if (typeof showToast === 'function') {
-                            showToast('Account created successfully! Redirecting to homepage...', 'success');
-                        }
-
-                        // Redirect to homepage
-                        setTimeout(() => {
-                            window.location.href = 'index.html';
-                        }, 2000);
-                    }, 1500);
+                    await submitRegistration({
+                        firstName,
+                        lastName,
+                        username,
+                        email,
+                        password,
+                        phone
+                    });
                 }
             });
         }
 
-        // Password strength indicator
+        // Индикатор силы пароля
         if (passwordInput && passwordStrength) {
             passwordInput.addEventListener('input', function() {
-                const password = this.value;
-                let strength = 'weak';
+                updatePasswordStrength(this.value);
+            });
+        }
+    }
 
-                if (password.length >= 10) {
-                    strength = 'strong';
-                } else if (password.length >= 6) {
-                    strength = 'medium';
+    // ========== ФУНКЦИЯ РЕГИСТРАЦИИ ==========
+    async function submitRegistration(userData) {
+        const form = document.getElementById('registrationForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        try {
+            // Показываем загрузку
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+            submitBtn.disabled = true;
+
+            // Проверяем, загружен ли auth.js
+            if (!window.auth || typeof window.auth.register !== 'function') {
+                throw new Error('Authentication system not loaded. Please refresh the page.');
+            }
+
+            // ⚠️ ИСПРАВЛЕНИЕ: Передаем сырые данные, auth.js сам их преобразует
+            // НЕ создаем full_name здесь - это делает auth.js
+            const result = await window.auth.register({
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+                username: userData.username,
+                email: userData.email,
+                password: userData.password,
+                phone: userData.phone
+            });
+
+            if (result.success) {
+                // Показываем успех
+                if (typeof showToast === 'function') {
+                    showToast('Account created successfully!', 'success');
                 }
 
-                passwordStrength.className = 'strength-meter';
-                passwordStrength.classList.add(`strength-${strength}`);
-            });
-        }
+                // Восстанавливаем корзину если есть
+                if (savedCartData) {
+                    try {
+                        localStorage.setItem('brewAndCoCart', savedCartData);
+                        if (typeof showToast === 'function') {
+                            showToast('Your cart has been restored', 'info');
+                        }
+                    } catch (e) {
+                        console.error('Failed to restore cart:', e);
+                    }
+                }
 
-        // Helper functions
-        function isValidEmail(email) {
-            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return re.test(email);
-        }
+                // Редирект
+                setTimeout(() => {
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 2000);
 
-        function showError(elementId, message) {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.textContent = message;
-                element.style.display = 'block';
+            } else {
+                // Обработка ошибок с сервера
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+                if (result.error) {
+                    // Показываем конкретную ошибку
+                    if (typeof showToast === 'function') {
+                        showToast('Registration failed: ' + result.error, 'error');
+                    }
+
+                    // Показываем ошибку у соответствующего поля
+                    const errorLower = result.error.toLowerCase();
+                    if (errorLower.includes('username')) {
+                        showError('usernameError', result.error);
+                    } else if (errorLower.includes('email')) {
+                        showError('emailError', result.error);
+                    } else if (errorLower.includes('password')) {
+                        showError('passwordError', result.error);
+                    } else if (errorLower.includes('already exists') || errorLower.includes('duplicate')) {
+                        showError('emailError', 'This email or username is already registered');
+                    } else {
+                        showError('usernameError', 'Registration failed: ' + result.error);
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('Registration error:', error);
+
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
+            if (typeof showToast === 'function') {
+                showToast('Registration failed. Please try again.', 'error');
+            }
+
+            // Показываем сообщение о проблеме с подключением
+            if (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                showError('emailError', 'Cannot connect to server. Please check if backend is running on localhost:5000');
             }
         }
+    }
 
-        function clearErrors() {
-            const errorElements = document.querySelectorAll('.error-message');
-            errorElements.forEach(element => {
-                element.textContent = '';
-                element.style.display = 'none';
-            });
+    // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
+    // Парсинг параметров URL
+    function parseUrlParameters() {
+        const urlParams = new URLSearchParams(window.location.search);
+        redirectUrl = urlParams.get('redirect') || '';
+        const cartParam = urlParams.get('cart');
+
+        if (cartParam) {
+            try {
+                savedCartData = decodeURIComponent(cartParam);
+                const cartItems = JSON.parse(savedCartData);
+                hasCartItems = Array.isArray(cartItems) && cartItems.length > 0;
+            } catch (e) {
+                console.error('Failed to parse cart data:', e);
+                savedCartData = null;
+                hasCartItems = false;
+            }
+        }
+    }
+
+    // Предпросмотр корзины
+    function showCartPreview() {
+        if (!savedCartData) return;
+
+        try {
+            const cartItems = JSON.parse(savedCartData);
+            const itemCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
+            const totalAmount = cartItems.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+
+            alert(`🛒 Your Cart Preview:\n\n` +
+                  `Items: ${itemCount}\n` +
+                  `Total: $${totalAmount.toFixed(2)}\n\n` +
+                  `These items will be restored after registration.`);
+        } catch (e) {
+            console.error('Error showing cart preview:', e);
+        }
+    }
+
+    // Обновление индикатора силы пароля
+    function updatePasswordStrength(password) {
+        const strengthElement = document.getElementById('passwordStrength');
+        if (!strengthElement) return;
+
+        let strength = 'weak';
+        let score = 0;
+
+        // Проверка длины
+        if (password.length >= 6) score++;
+        if (password.length >= 10) score++;
+
+        // Проверка сложности
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        // Определяем уровень
+        if (score >= 4) strength = 'strong';
+        else if (score >= 2) strength = 'medium';
+        else strength = 'weak';
+
+        // Обновляем отображение
+        strengthElement.className = 'strength-meter';
+        strengthElement.classList.add(`strength-${strength}`);
+    }
+
+    // Валидация email
+    function isValidEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // Показать ошибку
+    function showError(elementId, message) {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+    }
+
+    // Очистить ошибки
+    function clearErrors() {
+        const errorElements = document.querySelectorAll('.error-message');
+        errorElements.forEach(element => {
+            element.textContent = '';
+            element.style.display = 'none';
+        });
+    }
+
+    // Загрузка скрипта
+    function loadScript(src, callback) {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = callback;
+        script.onerror = function() {
+            console.error('Failed to load script:', src);
+            if (typeof showToast === 'function') {
+                showToast('Error loading authentication system', 'error');
+            }
+        };
+        document.head.appendChild(script);
+    }
+
+    // Автозаполнение username из email
+    document.getElementById('email')?.addEventListener('blur', function() {
+        const email = this.value.trim();
+        const usernameField = document.getElementById('username');
+
+        if (email && (!usernameField.value || usernameField.value === '')) {
+            // Извлекаем username из email (часть до @)
+            const username = email.split('@')[0];
+            if (username.length >= 3) {
+                usernameField.value = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+            }
         }
     });
+
+    // Автозаполнение full name если введены оба имени
+    document.getElementById('firstName')?.addEventListener('blur', updateFullName);
+    document.getElementById('lastName')?.addEventListener('blur', updateFullName);
+
+    function updateFullName() {
+        const firstName = document.getElementById('firstName')?.value.trim() || '';
+        const lastName = document.getElementById('lastName')?.value.trim() || '';
+
+        // Можно использовать для предпросмотра или других целей
+        if (firstName && lastName) {
+            console.log('Full name would be:', `${firstName} ${lastName}`);
+        }
+    }
+
+    // ========== ТЕСТОВЫЕ ФУНКЦИИ (можно удалить после тестирования) ==========
+
+    // Проверка соединения с бэкендом
+    async function testBackendConnection() {
+        try {
+            const response = await fetch('http://localhost:5000/api/health');
+            if (response.ok) {
+                console.log('✅ Backend is running');
+                return true;
+            }
+        } catch (error) {
+            console.error('❌ Backend is not running:', error.message);
+            return false;
+        }
+    }
+
+    // Автотест при загрузке (раскомментируйте для тестирования)
+    // window.addEventListener('load', async () => {
+    //     const isBackendRunning = await testBackendConnection();
+    //     if (!isBackendRunning) {
+    //         alert('⚠️ Backend server is not running!\n\nPlease start the backend:\n1. Open terminal\n2. cd backend\n3. npm run dev\n\nThen refresh this page.');
+    //     }
+    // });
 </script>
 </body>
 </html>

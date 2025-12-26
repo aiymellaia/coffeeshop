@@ -9,7 +9,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: [process.env.CLIENT_URL, process.env.ADMIN_URL, 'http://127.0.0.1:5500'],
+    origin: '*',
     credentials: true
 }));
 app.use(express.json());

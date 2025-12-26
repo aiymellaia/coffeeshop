@@ -16,9 +16,84 @@ class ShoppingCart {
         this.triggerCartUpdate();
     }
 
+    // Загрузка корзины из localStorage
+    loadCart() {
+        try {
+            const savedCart = localStorage.getItem('brewAndCoCart');
+            return savedCart ? JSON.parse(savedCart) : [];
+        } catch (error) {
+            console.error('Error loading cart:', error);
+            return [];
+        }
+    }
+
+    // Сохранение корзины в localStorage
+    saveCart() {
+        try {
+            localStorage.setItem('brewAndCoCart', JSON.stringify(this.items));
+        } catch (error) {
+            console.error('Error saving cart:', error);
+        }
+    }
+
+    // Проверка авторизации (универсальная для клиентов и админов)
+    isUserAuthenticated() {
+        // Проверяем оба типа токенов
+        const userToken = localStorage.getItem('user_token');
+        const adminToken = localStorage.getItem('authToken');
+
+        // Проверяем, есть ли данные пользователя
+        const userData = localStorage.getItem('user_data');
+        const adminData = localStorage.getItem('admin');
+
+        return !!(userToken || adminToken);
+    }
+
+    // Получение текущего пользователя
+    getCurrentUser() {
+        // Пытаемся получить клиента
+        try {
+            const userData = localStorage.getItem('user_data');
+            if (userData) {
+                const user = JSON.parse(userData);
+                user.role = 'customer'; // Добавляем роль
+                return user;
+            }
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+        }
+
+        // Пытаемся получить админа
+        try {
+            const adminData = localStorage.getItem('admin');
+            if (adminData) {
+                const admin = JSON.parse(adminData);
+                admin.role = 'admin'; // Добавляем роль
+                return admin;
+            }
+        } catch (e) {
+            console.error('Error parsing admin data:', e);
+        }
+
+        return null;
+    }
+
+    // Получение токена для авторизации
+    getAuthToken() {
+        // Пробуем получить токен клиента
+        const userToken = localStorage.getItem('user_token');
+        if (userToken) return userToken;
+
+        // Пробуем получить токен админа
+        const adminToken = localStorage.getItem('authToken');
+        if (adminToken) return adminToken;
+
+        return null;
+    }
+
     async submitOrderToServer() {
-        // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
-        if (!window.auth || !window.auth.isAuthenticated()) {
+        // ========== УНИВЕРСАЛЬНАЯ ПРОВЕРКА АВТОРИЗАЦИИ ==========
+        if (!this.isUserAuthenticated()) {
             if (typeof showToast === 'function') {
                 showToast('Please login or register to place an order', 'error');
             }
@@ -40,26 +115,28 @@ class ShoppingCart {
             return { success: false, message: 'Cart is empty' };
         }
 
-        // Получаем данные пользователя из auth
-        const user = window.auth.currentUser;
+        // Получаем данные пользователя
+        const user = this.getCurrentUser();
 
-        // Проверяем, заполнены ли обязательные данные пользователя
-        if (!user.full_name || !user.phone) {
-            if (typeof showToast === 'function') {
-                showToast('Please complete your profile information', 'error');
-            }
-
-            // Предлагаем заполнить профиль
-            setTimeout(() => {
-                if (confirm('Please update your profile with name and phone number. Go to profile page?')) {
-                    window.location.href = 'profile.html';
+        // Проверяем, заполнены ли обязательные данные для КЛИЕНТА (админы могут заказывать без full_name и phone)
+        if (user && user.role === 'customer') {
+            if (!user.full_name || !user.phone) {
+                if (typeof showToast === 'function') {
+                    showToast('Please complete your profile information', 'error');
                 }
-            }, 1000);
 
-            return { success: false, message: 'Incomplete profile' };
+                // Предлагаем заполнить профиль
+                setTimeout(() => {
+                    if (confirm('Please update your profile with name and phone number. Go to profile page?')) {
+                        window.location.href = 'profile.html';
+                    }
+                }, 1000);
+
+                return { success: false, message: 'Incomplete profile' };
+            }
         }
 
-        // Подготавливаем данные заказа (теперь без customer данных - берем из пользователя)
+        // Подготавливаем данные заказа
         const orderData = {
             items: this.items.map(item => ({
                 id: item.id,
@@ -68,7 +145,9 @@ class ShoppingCart {
                 price: item.price
             })),
             total_amount: this.getTotal(),
-            notes: document.getElementById('orderNotes')?.value || ''
+            notes: document.getElementById('orderNotes')?.value || '',
+            // Для админов добавляем роль (необязательно)
+            ...(user && user.role === 'admin' && { ordered_by_admin: true })
         };
 
         // Show loading state
@@ -82,12 +161,19 @@ class ShoppingCart {
         }
 
         try {
+            // Получаем токен для авторизации
+            const token = this.getAuthToken();
+
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
             // Send to server WITH AUTH TOKEN
             const response = await fetch('http://localhost:5000/api/orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...window.auth.getAuthHeader()  // Добавляем токен авторизации
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(orderData)
             });
@@ -133,10 +219,8 @@ class ShoppingCart {
                 errorMessage = 'Cannot connect to server. Please check your internet connection.';
             } else if (error.message.includes('401') || error.message.includes('403')) {
                 errorMessage = 'Session expired. Please login again.';
-                // Очищаем токен если истек
-                if (window.auth) {
-                    window.auth.logout();
-                }
+                // Очищаем токены если истекли
+                this.clearAuthData();
             } else if (error.message.includes('404')) {
                 errorMessage = 'Server not found. Please make sure the backend is running.';
             } else if (error.message.includes('500')) {
@@ -157,11 +241,19 @@ class ShoppingCart {
         }
     }
 
-    // Helper method for order confirmation
+    // Очистка данных авторизации
+    clearAuthData() {
+        localStorage.removeItem('user_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('admin');
+    }
+
     // Helper method for order confirmation
     showOrderConfirmation(orderId, user = null) {
-        const userName = user ? user.full_name || user.username : 'Customer';
+        const userName = user ? user.full_name || user.username || 'Customer' : 'Customer';
         const userPhone = user ? user.phone : '';
+        const userRole = user ? user.role : 'customer';
 
         // Create a nicer confirmation modal with user info
         const modalHTML = `
@@ -191,12 +283,19 @@ class ShoppingCart {
                     <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
                         Order <strong>#${orderId}</strong> has been received.
                     </p>
-                    <p style="color: #666; margin-bottom: 0.5rem;">
-                        Customer: <strong>${userName}</strong>
-                    </p>
-                    ${userPhone ? `<p style="color: #666; margin-bottom: 1rem;">
-                        We will contact you at: <strong>${userPhone}</strong>
-                    </p>` : ''}
+                    ${userRole === 'admin' ?
+                        `<p style="color: #666; margin-bottom: 0.5rem;">
+                            <i class="fas fa-user-shield"></i> Order placed by administrator
+                        </p>` :
+                        `<p style="color: #666; margin-bottom: 0.5rem;">
+                            Customer: <strong>${userName}</strong>
+                        </p>`
+                    }
+                    ${userPhone && userRole !== 'admin' ?
+                        `<p style="color: #666; margin-bottom: 1rem;">
+                            We will contact you at: <strong>${userPhone}</strong>
+                        </p>` : ''
+                    }
                     <p style="color: #666; margin-bottom: 2rem;">
                         Estimated pickup time: <strong>15-20 minutes</strong>
                     </p>
@@ -213,19 +312,21 @@ class ShoppingCart {
                     " onmouseover="this.style.background='#45a049'" onmouseout="this.style.background='#4CAF50'">
                         Continue Shopping
                     </button>
-                    <button onclick="window.location.href='profile.html#orders'" style="
-                        background: #3498db;
-                        color: white;
-                        border: none;
-                        padding: 12px 30px;
-                        font-size: 16px;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        transition: background 0.3s;
-                        margin: 5px;
-                    " onmouseover="this.style.background='#2980b9'" onmouseout="this.style.background='#3498db'">
-                        View My Orders
-                    </button>
+                    ${userRole === 'customer' ?
+                        `<button onclick="window.location.href='profile.html#orders'" style="
+                            background: #3498db;
+                            color: white;
+                            border: none;
+                            padding: 12px 30px;
+                            font-size: 16px;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            transition: background 0.3s;
+                            margin: 5px;
+                        " onmouseover="this.style.background='#2980b9'" onmouseout="this.style.background='#3498db'">
+                            View My Orders
+                        </button>` : ''
+                    }
                 </div>
             </div>
         `;
@@ -238,15 +339,6 @@ class ShoppingCart {
 
         // Add new modal to page
         document.body.insertAdjacentHTML('beforeend', modalHTML);
-    }
-
-    // Save cart to localStorage
-    saveCart() {
-        try {
-            localStorage.setItem('brewAndCoCart', JSON.stringify(this.items));
-        } catch (error) {
-            console.error('Error saving cart:', error);
-        }
     }
 
     // Add item to cart
@@ -296,6 +388,7 @@ class ShoppingCart {
 
     // Remove item from cart
     removeItem(itemId) {
+        const item = this.items.find(i => i.id === itemId);
         this.items = this.items.filter(i => i.id !== itemId);
         this.saveCart();
         this.updateCartCount();
@@ -303,8 +396,8 @@ class ShoppingCart {
         this.triggerCartUpdate(); // Обновляем кнопки
 
         // Show notification
-        if (typeof showToast === 'function') {
-            showToast('Item removed from cart', 'info');
+        if (typeof showToast === 'function' && item) {
+            showToast(`${item.name} removed from cart`, 'info');
         }
 
         return this;
@@ -340,17 +433,21 @@ class ShoppingCart {
 
     // Update cart count in header
     updateCartCount() {
-        const countElements = document.querySelectorAll('#cart-count');
+        const countElements = document.querySelectorAll('#cart-count, .cart-count');
         const itemCount = this.getItemCount();
 
         countElements.forEach(element => {
             if (element) {
                 element.textContent = itemCount;
                 // Show/hide cart count badge
-                if (itemCount > 0) {
-                    element.parentElement.style.display = 'flex';
-                } else {
-                    element.parentElement.style.display = 'none';
+                const parent = element.parentElement;
+                if (parent) {
+                    if (itemCount > 0) {
+                        parent.style.display = 'flex';
+                        parent.style.display = 'inline-block';
+                    } else {
+                        parent.style.display = 'none';
+                    }
                 }
             }
         });
@@ -394,10 +491,13 @@ class ShoppingCart {
             return;
         }
 
-        // Enable checkout button if there are items
+        // Проверяем авторизацию для кнопки checkout
+        const isAuthenticated = this.isUserAuthenticated();
+
         if (checkoutBtn) {
-            checkoutBtn.disabled = false;
-            checkoutBtn.style.opacity = '1';
+            checkoutBtn.disabled = !isAuthenticated || this.items.length === 0;
+            checkoutBtn.style.opacity = isAuthenticated ? '1' : '0.5';
+            checkoutBtn.title = isAuthenticated ? 'Place order' : 'Please login to place order';
         }
 
         let cartHTML = '';
@@ -409,7 +509,7 @@ class ShoppingCart {
             const itemTotal = item.price * item.quantity;
             cartHTML += `
                 <div class="cart-item" data-id="${item.id}">
-                    <img src="${item.image}" alt="${item.name}" class="cart-item-img">
+                    <img src="${item.image || 'placeholder.jpg'}" alt="${item.name}" class="cart-item-img">
                     <div class="cart-item-info">
                         <h4>${item.name}</h4>
                         <div class="cart-item-category">${item.category || 'Coffee'}</div>
@@ -541,23 +641,31 @@ class ShoppingCart {
                 }
 
                 // Проверяем авторизацию
-                if (!window.auth || !window.auth.isAuthenticated()) {
+                if (!this.isUserAuthenticated()) {
                     if (typeof showToast === 'function') {
                         showToast('Please login to place an order', 'error');
                     }
+
+                    // Сохраняем корзину перед редиректом
+                    this.saveCart();
+
                     setTimeout(() => {
-                        window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+                        window.location.href = 'login.html?redirect=' +
+                            encodeURIComponent(window.location.href) +
+                            '&cart=' + encodeURIComponent(JSON.stringify(this.items));
                     }, 1500);
                     return;
                 }
 
-                // Проверяем заполнен ли профиль
-                const user = window.auth.currentUser;
-                if (!user.full_name || !user.phone) {
-                    if (confirm('Please complete your profile with name and phone number before ordering. Go to profile page?')) {
-                        window.location.href = 'profile.html';
+                // Проверяем заполнен ли профиль для клиентов
+                const user = this.getCurrentUser();
+                if (user && user.role === 'customer') {
+                    if (!user.full_name || !user.phone) {
+                        if (confirm('Please complete your profile with name and phone number before ordering. Go to profile page?')) {
+                            window.location.href = 'profile.html';
+                        }
+                        return;
                     }
-                    return;
                 }
 
                 // Отправляем заказ
@@ -568,14 +676,22 @@ class ShoppingCart {
         // Обновляем состояние кнопки checkout при изменении корзины
         this.onCartUpdate(() => {
             if (checkoutBtn) {
-                checkoutBtn.disabled = this.items.length === 0;
+                const isAuthenticated = this.isUserAuthenticated();
+                checkoutBtn.disabled = !isAuthenticated || this.items.length === 0;
+                checkoutBtn.style.opacity = isAuthenticated ? '1' : '0.5';
             }
         });
     }
 
-    // Show customer form if not present
+    // Show customer form if not present (для неавторизованных пользователей)
     showCustomerForm() {
-        // Create modal for customer details
+        // Проверяем, авторизован ли пользователь
+        if (this.isUserAuthenticated()) {
+            // Если авторизован, используем данные профиля
+            return this.submitOrderToServer();
+        }
+
+        // Create modal for customer details для неавторизованных
         const modalHTML = `
             <div class="customer-form-modal" style="
                 position: fixed;
@@ -597,6 +713,9 @@ class ShoppingCart {
                     overflow-y: auto;
                 ">
                     <h3 style="margin-bottom: 1.5rem; color: #333;">Enter Your Details</h3>
+                    <p style="color: #666; margin-bottom: 1rem; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> For faster checkout next time, consider <a href="register.html" style="color: #3498db;">creating an account</a>
+                    </p>
 
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Full Name *</label>
@@ -656,7 +775,7 @@ class ShoppingCart {
                             cursor: pointer;
                             font-size: 16px;
                         ">Cancel</button>
-                        <button onclick="cart.submitModalOrder()" style="
+                        <button onclick="cart.submitGuestOrder()" style="
                             padding: 12px 24px;
                             background: #4CAF50;
                             color: white;
@@ -665,7 +784,7 @@ class ShoppingCart {
                             cursor: pointer;
                             font-size: 16px;
                             font-weight: bold;
-                        ">Place Order</button>
+                        ">Place Order as Guest</button>
                     </div>
                 </div>
             </div>
@@ -681,8 +800,8 @@ class ShoppingCart {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
-    // Submit order from modal form
-    async submitModalOrder() {
+    // Submit order from modal form (для гостей)
+    async submitGuestOrder() {
         // Get values from modal
         const customerName = document.getElementById('modalCustomerName')?.value.trim() || '';
         const customerPhone = document.getElementById('modalCustomerPhone')?.value.trim() || '';
@@ -704,27 +823,20 @@ class ShoppingCart {
             return;
         }
 
-        // Set values in hidden inputs or store temporarily
-        this.tempOrderData = {
-            customerName,
-            customerPhone,
-            customerEmail,
-            orderNotes
-        };
-
         // Remove modal
         const modal = document.querySelector('.customer-form-modal');
         if (modal) {
             modal.remove();
         }
 
-        // Submit order
+        // Submit order as guest
         await this.submitOrderToServer();
     }
 
     // Get cart summary for order
     getOrderSummary() {
         const items = this.items.map(item => ({
+            id: item.id,
             name: item.name,
             quantity: item.quantity,
             price: item.price,
@@ -759,16 +871,55 @@ class ShoppingCart {
         const item = this.getItem(itemId);
         return item ? item.price * item.quantity : 0;
     }
+
+    // Восстановить корзину из URL параметров
+    restoreCartFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cartParam = urlParams.get('cart');
+
+        if (cartParam) {
+            try {
+                const restoredItems = JSON.parse(decodeURIComponent(cartParam));
+                if (Array.isArray(restoredItems)) {
+                    this.items = restoredItems;
+                    this.saveCart();
+                    this.updateCartCount();
+                    this.renderCart();
+                    this.triggerCartUpdate();
+
+                    // Очищаем параметр из URL
+                    const newUrl = window.location.pathname + window.location.search.replace(/[?&]cart=[^&]+/, '').replace(/^&/, '?');
+                    window.history.replaceState({}, document.title, newUrl);
+
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error restoring cart from URL:', error);
+            }
+        }
+        return false;
+    }
 }
 
 // Initialize cart when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.cart = new ShoppingCart();
 
-    // Обновить кнопки после небольшой задержки (чтобы все элементы успели загрузиться)
+    // Пробуем восстановить корзину из URL параметров
+    window.cart.restoreCartFromUrl();
+
+    // Обновить кнопки после небольшой задержки
     setTimeout(() => {
         if (window.cart) {
             window.cart.updateAddToCartButtons();
+
+            // Проверяем авторизацию и показываем соответствующее сообщение
+            if (!window.cart.isUserAuthenticated() && window.cart.hasItems()) {
+                const checkoutBtn = document.getElementById('checkoutBtn');
+                if (checkoutBtn) {
+                    checkoutBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login to Checkout';
+                }
+            }
         }
     }, 500);
 });
