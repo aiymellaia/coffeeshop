@@ -1,4 +1,4 @@
-// menu.js - Логика страницы меню
+// menu.js - Логика страницы меню с интеграцией API
 
 class MenuManager {
     constructor() {
@@ -8,13 +8,22 @@ class MenuManager {
         this.currentPage = 1;
         this.itemsPerPage = 6;
         this.isLoading = false;
+        this.useServerData = true; // Флаг для использования данных с сервера
+        this.apiBaseUrl = 'http://localhost:5000/api';
 
         this.init();
     }
 
     async init() {
-        // Load menu items
+        // Load menu items from API
         await this.loadMenuItems();
+
+        // Register cart update callback
+        if (window.cart) {
+            window.cart.onCartUpdate(() => {
+                this.updateCartButtons();
+            });
+        }
 
         // Render initial menu
         this.renderMenu();
@@ -26,14 +35,81 @@ class MenuManager {
         this.hideLoading();
     }
 
-    // Load menu items (in real app, this would be an API call)
+    // Load menu items from API or fallback to local data
     async loadMenuItems() {
         this.showLoading();
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Если есть API сервис, пробуем загрузить с сервера
+        if (window.apiService && this.useServerData) {
+            try {
+                // Проверяем доступность сервера
+                const serverAvailable = await this.checkServerStatus();
 
-        this.menuItems = [
+                if (serverAvailable) {
+                    // Загружаем с сервера
+                    console.log('🔄 Loading products from server...');
+                    this.menuItems = await window.apiService.getProducts();
+
+                    if (this.menuItems && this.menuItems.length > 0) {
+                        console.log(`✅ Loaded ${this.menuItems.length} products from server`);
+
+                        // Нормализуем данные (на случай если API возвращает другой формат)
+                        this.normalizeProductsData();
+                    } else {
+                        throw new Error('No products received from server');
+                    }
+                } else {
+                    throw new Error('Server unavailable');
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to load from API, using local data:', error.message);
+                this.useServerData = false;
+                this.menuItems = this.getLocalProducts();
+            }
+        } else {
+            // Используем локальные данные
+            console.log('📦 Using local products data');
+            this.menuItems = this.getLocalProducts();
+        }
+
+        this.filteredItems = [...this.menuItems];
+        this.hideLoading();
+    }
+
+    // Проверка статуса сервера
+    async checkServerStatus() {
+        try {
+            if (!window.apiService) {
+                console.log('API service not available');
+                return false;
+            }
+
+            const status = await window.apiService.checkHealth();
+            return status.ok;
+        } catch (error) {
+            console.warn('Server status check failed:', error);
+            return false;
+        }
+    }
+
+    // Нормализация данных продуктов
+    normalizeProductsData() {
+        this.menuItems = this.menuItems.map(item => ({
+            id: item.id || 0,
+            name: item.name || 'Unknown Item',
+            category: item.category || 'other',
+            price: parseFloat(item.price) || 0,
+            description: item.description || 'No description available',
+            image: item.image || 'default.jpg',
+            popular: Boolean(item.popular) || false,
+            rating: parseFloat(item.rating) || 0.0,
+            is_available: item.is_available !== false
+        }));
+    }
+
+    // Локальные данные для fallback
+    getLocalProducts() {
+        return [
             {
                 id: 1,
                 name: "Flat White",
@@ -185,8 +261,43 @@ class MenuManager {
                 rating: 4.7
             }
         ];
+    }
 
-        this.filteredItems = [...this.menuItems];
+    // Обновление кнопок корзины
+    updateCartButtons() {
+        if (!window.cart) return;
+
+        // Обновление на странице меню
+        document.querySelectorAll('.menu-item').forEach(menuItem => {
+            const itemId = parseInt(menuItem.dataset.id);
+            const isInCart = window.cart.items.some(item => item.id === itemId);
+            const button = menuItem.querySelector('.add-to-cart-btn');
+            const qtyDisplay = menuItem.querySelector('.qty-display');
+
+            if (button) {
+                if (isInCart) {
+                    const cartItem = window.cart.items.find(item => item.id === itemId);
+                    button.innerHTML = '<i class="fas fa-check"></i> Added';
+                    button.classList.add('added');
+                    button.disabled = true;
+
+                    if (qtyDisplay) {
+                        qtyDisplay.textContent = cartItem.quantity || 1;
+                    }
+                } else {
+                    button.innerHTML = '<i class="fas fa-plus"></i> Add to Cart';
+                    button.classList.remove('added');
+                    button.disabled = false;
+
+                    if (qtyDisplay) {
+                        qtyDisplay.textContent = '1';
+                    }
+                }
+            }
+        });
+
+        // Обновление на главной странице (featured items)
+        this.updateFeaturedCartButtons();
     }
 
     // Filter menu items
@@ -198,7 +309,7 @@ class MenuManager {
             this.filteredItems = [...this.menuItems];
         } else {
             this.filteredItems = this.menuItems.filter(item =>
-                item.category === filter
+                item.category === filter && item.is_available !== false
             );
         }
 
@@ -216,9 +327,9 @@ class MenuManager {
         }
 
         this.filteredItems = this.menuItems.filter(item =>
-            item.name.toLowerCase().includes(searchTerm) ||
-            item.description.toLowerCase().includes(searchTerm) ||
-            item.category.toLowerCase().includes(searchTerm)
+            (item.name && item.name.toLowerCase().includes(searchTerm)) ||
+            (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+            (item.category && item.category.toLowerCase().includes(searchTerm))
         );
 
         this.currentPage = 1;
@@ -250,12 +361,19 @@ class MenuManager {
         let menuHTML = '';
 
         itemsToShow.forEach(item => {
+            // Check if item is available
+            if (item.is_available === false) {
+                return; // Skip unavailable items
+            }
+
             // Check if item is in cart
             const isInCart = window.cart?.items.some(cartItem => cartItem.id === item.id);
+            const cartItem = isInCart ? window.cart.items.find(cartItem => cartItem.id === item.id) : null;
 
             menuHTML += `
                 <div class="menu-item" data-id="${item.id}" data-category="${item.category}">
-                    <img src="${item.image}" alt="${item.name}" class="menu-item-img" loading="lazy">
+                    <img src="${item.image}" alt="${item.name}" class="menu-item-img" loading="lazy"
+                         onerror="this.src='https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
                     <div class="menu-item-content">
                         <div class="menu-item-header">
                             <h3>${item.name}</h3>
@@ -266,10 +384,14 @@ class MenuManager {
 
                         ${item.popular ? `<div class="popular-badge"><i class="fas fa-star"></i> Popular</div>` : ''}
 
+                        ${item.rating ? `<div class="rating-badge">
+                            <i class="fas fa-star"></i> ${item.rating.toFixed(1)}
+                        </div>` : ''}
+
                         <div class="menu-item-footer">
                             <div class="quantity-controls">
                                 <button class="qty-btn" onclick="menu.decreaseQuantity(${item.id})">-</button>
-                                <span class="qty-display" id="qty-${item.id}">${isInCart ? window.cart.items.find(i => i.id === item.id)?.quantity || 1 : 1}</span>
+                                <span class="qty-display" id="qty-${item.id}">${cartItem ? cartItem.quantity : 1}</span>
                                 <button class="qty-btn" onclick="menu.increaseQuantity(${item.id})">+</button>
                             </div>
                             <button class="add-to-cart-btn ${isInCart ? 'added' : ''}"
@@ -302,9 +424,12 @@ class MenuManager {
             'cold-coffee': 'Cold Coffee',
             'tea': 'Tea',
             'pastries': 'Pastries',
-            'specials': 'Seasonal Special'
+            'specials': 'Seasonal Special',
+            'coffee': 'Coffee',
+            'dessert': 'Dessert',
+            'drinks': 'Drinks'
         };
-        return labels[category] || category;
+        return labels[category] || category.replace('-', ' ').toUpperCase();
     }
 
     // Quantity controls
@@ -331,17 +456,20 @@ class MenuManager {
     // Add item to cart
     addToCart(itemId) {
         const item = this.menuItems.find(i => i.id === itemId);
-        if (!item) return;
+        if (!item || !window.cart) return;
 
         const qtyElement = document.getElementById(`qty-${itemId}`);
         const quantity = qtyElement ? parseInt(qtyElement.textContent) : 1;
 
         // Add to cart
-        if (window.cart) {
-            window.cart.addItem(item, quantity);
+        window.cart.addItem(item, quantity);
 
-            // Обновление состояния кнопки теперь делается через Cart
-            // Не нужно делать это здесь, Cart сам обновит
+        // Обновляем кнопку сразу (корзина сама вызовет updateCartButtons через коллбэк)
+        const button = document.querySelector(`.menu-item[data-id="${itemId}"] .add-to-cart-btn`);
+        if (button) {
+            button.innerHTML = '<i class="fas fa-check"></i> Added';
+            button.classList.add('added');
+            button.disabled = true;
         }
     }
 
@@ -375,6 +503,12 @@ class MenuManager {
         const loadingElement = document.getElementById('menuLoading');
         if (loadingElement) {
             loadingElement.style.display = 'block';
+            loadingElement.innerHTML = `
+                <div class="loading-spinner">
+                    <i class="fas fa-coffee fa-spin"></i>
+                    <p>Loading menu...</p>
+                </div>
+            `;
         }
     }
 
@@ -428,6 +562,20 @@ class MenuManager {
                 this.loadMore();
             });
         }
+
+        // Refresh button (если есть)
+        const refreshBtn = document.getElementById('refreshMenu');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                this.useServerData = true;
+                await this.loadMenuItems();
+                this.filterItems(this.currentFilter);
+
+                if (typeof showToast === 'function') {
+                    showToast('Menu refreshed from server', 'success');
+                }
+            });
+        }
     }
 }
 
@@ -439,12 +587,89 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // For homepage featured items
-function initFeaturedItems() {
+async function initFeaturedItems() {
     const featuredGrid = document.querySelector('.featured-grid');
     if (!featuredGrid) return;
 
-    // Sample featured items (would come from API in real app)
-    const featuredItems = [
+    try {
+        let featuredItems = [];
+
+        // Пробуем загрузить с сервера
+        if (window.apiService) {
+            try {
+                const serverAvailable = await checkServerStatus(false);
+                if (serverAvailable) {
+                    // Получаем популярные товары или первые 3 товара
+                    featuredItems = await window.apiService.getProducts();
+                    featuredItems = featuredItems
+                        .filter(item => item.popular || item.is_available !== false)
+                        .slice(0, 3);
+                } else {
+                    throw new Error('Server unavailable');
+                }
+            } catch (error) {
+                console.log('Using local featured items');
+                featuredItems = getLocalFeaturedItems();
+            }
+        } else {
+            featuredItems = getLocalFeaturedItems();
+        }
+
+        displayFeaturedItems(featuredItems);
+    } catch (error) {
+        console.error('Error loading featured items:', error);
+        displayFeaturedItems(getLocalFeaturedItems());
+    }
+}
+
+function displayFeaturedItems(items) {
+    const featuredGrid = document.querySelector('.featured-grid');
+    if (!featuredGrid) return;
+
+    let featuredHTML = '';
+
+    items.forEach(item => {
+        const isInCart = window.cart?.items.some(cartItem => cartItem.id === item.id);
+
+        featuredHTML += `
+            <div class="featured-item" data-id="${item.id}">
+                <img src="${item.image}" alt="${item.name}" class="featured-img" loading="lazy"
+                     onerror="this.src='https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'">
+                <div class="featured-content">
+                    <h3>${item.name}</h3>
+                    <p class="muted">${item.description}</p>
+                    <span class="featured-category">${getCategoryLabelForFeatured(item.category)}</span>
+                    <div class="featured-price">$${parseFloat(item.price).toFixed(2)}</div>
+                    <button class="add-to-cart-btn ${isInCart ? 'added' : ''}"
+                            onclick="addFeaturedToCart(${item.id})"
+                            ${isInCart ? 'disabled' : ''}
+                            style="margin-top: 10px; padding: 8px 16px; font-size: 14px;">
+                        <i class="fas fa-${isInCart ? 'check' : 'plus'}"></i>
+                        ${isInCart ? 'Added' : 'Add to Cart'}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    featuredGrid.innerHTML = featuredHTML;
+}
+
+function getCategoryLabelForFeatured(category) {
+    const labels = {
+        'hot-coffee': 'Hot Coffee',
+        'cold-coffee': 'Cold Coffee',
+        'tea': 'Tea',
+        'pastries': 'Pastry',
+        'specials': 'Special',
+        'coffee': 'Coffee',
+        'dessert': 'Dessert'
+    };
+    return labels[category] || category;
+}
+
+function getLocalFeaturedItems() {
+    return [
         {
             id: 1,
             name: "Flat White",
@@ -470,64 +695,23 @@ function initFeaturedItems() {
             image: "https://images.unsplash.com/photo-1555507036-ab794f27d2e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
         }
     ];
-
-    let featuredHTML = '';
-
-    featuredItems.forEach(item => {
-        const isInCart = window.cart?.items.some(cartItem => cartItem.id === item.id);
-
-        featuredHTML += `
-            <div class="featured-item" data-id="${item.id}">
-                <img src="${item.image}" alt="${item.name}" class="featured-img" loading="lazy">
-                <div class="featured-content">
-                    <h3>${item.name}</h3>
-                    <p class="muted">${item.description}</p>
-                    <span class="featured-category">${item.category === 'hot-coffee' ? 'Hot Coffee' :
-                                                     item.category === 'cold-coffee' ? 'Cold Coffee' :
-                                                     item.category === 'pastries' ? 'Pastry' : item.category}</span>
-                    <div class="featured-price">$${item.price.toFixed(2)}</div>
-                    <button class="add-to-cart-btn ${isInCart ? 'added' : ''}"
-                            onclick="addFeaturedToCart(${item.id})"
-                            ${isInCart ? 'disabled' : ''}
-                            style="margin-top: 10px; padding: 8px 16px; font-size: 14px;">
-                        <i class="fas fa-${isInCart ? 'check' : 'plus'}"></i>
-                        ${isInCart ? 'Added' : 'Add to Cart'}
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
-    featuredGrid.innerHTML = featuredHTML;
 }
 
 // Add featured item to cart
 function addFeaturedToCart(itemId) {
-    const featuredItems = [
-        {
-            id: 1,
-            name: "Flat White",
-            category: "hot-coffee",
-            price: 3.50,
-            image: "https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-        },
-        {
-            id: 2,
-            name: "Cold Brew",
-            category: "cold-coffee",
-            price: 4.00,
-            image: "https://images.unsplash.com/photo-1568649929103-28ffbefaca1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-        },
-        {
-            id: 3,
-            name: "Almond Croissant",
-            category: "pastries",
-            price: 2.75,
-            image: "https://images.unsplash.com/photo-1555507036-ab794f27d2e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-        }
-    ];
+    // Ищем товар среди загруженных в меню
+    let item = null;
 
-    const item = featuredItems.find(i => i.id === itemId);
+    if (window.menu && window.menu.menuItems) {
+        item = window.menu.menuItems.find(i => i.id === itemId);
+    }
+
+    // Если не нашли в меню, используем локальные данные
+    if (!item) {
+        const featuredItems = getLocalFeaturedItems();
+        item = featuredItems.find(i => i.id === itemId);
+    }
+
     if (!item || !window.cart) return;
 
     window.cart.addItem(item);
@@ -541,7 +725,34 @@ function addFeaturedToCart(itemId) {
     }
 }
 
+// Проверка статуса сервера (вспомогательная функция)
+async function checkServerStatus(showNotification = true) {
+    if (!window.apiService) return false;
+
+    try {
+        const status = await window.apiService.checkHealth();
+
+        if (!status.ok && showNotification) {
+            console.warn('Server status:', status.message);
+
+            if (typeof showToast === 'function') {
+                showToast(`Server: ${status.message}`, 'warning', 3000);
+            }
+        }
+
+        return status.ok;
+    } catch (error) {
+        console.error('Error checking server status:', error);
+        return false;
+    }
+}
+
 // Initialize featured items on homepage
 if (document.querySelector('.featured-grid')) {
     document.addEventListener('DOMContentLoaded', initFeaturedItems);
+}
+
+// Экспорт для тестирования
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = MenuManager;
 }

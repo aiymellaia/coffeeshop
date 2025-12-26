@@ -1,4 +1,4 @@
-// cart.js - Логика корзины покупок (ИСПРАВЛЕННЫЙ)
+// cart.js - Логика корзины покупок с интеграцией API
 
 class ShoppingCart {
     constructor() {
@@ -16,15 +16,228 @@ class ShoppingCart {
         this.triggerCartUpdate();
     }
 
-    // Load cart from localStorage
-    loadCart() {
-        try {
-            const cartData = localStorage.getItem('brewAndCoCart');
-            return cartData ? JSON.parse(cartData) : [];
-        } catch (error) {
-            console.error('Error loading cart:', error);
-            return [];
+    async submitOrderToServer() {
+        // ========== ПРОВЕРКА АВТОРИЗАЦИИ ==========
+        if (!window.auth || !window.auth.isAuthenticated()) {
+            if (typeof showToast === 'function') {
+                showToast('Please login or register to place an order', 'error');
+            }
+
+            // Предлагаем войти или зарегистрироваться
+            setTimeout(() => {
+                if (confirm('You need to login to place an order. Go to login page?')) {
+                    window.location.href = 'login.html';
+                }
+            }, 1000);
+
+            return { success: false, message: 'Not authenticated' };
         }
+
+        if (this.items.length === 0) {
+            if (typeof showToast === 'function') {
+                showToast('Your cart is empty!', 'error');
+            }
+            return { success: false, message: 'Cart is empty' };
+        }
+
+        // Получаем данные пользователя из auth
+        const user = window.auth.currentUser;
+
+        // Проверяем, заполнены ли обязательные данные пользователя
+        if (!user.full_name || !user.phone) {
+            if (typeof showToast === 'function') {
+                showToast('Please complete your profile information', 'error');
+            }
+
+            // Предлагаем заполнить профиль
+            setTimeout(() => {
+                if (confirm('Please update your profile with name and phone number. Go to profile page?')) {
+                    window.location.href = 'profile.html';
+                }
+            }, 1000);
+
+            return { success: false, message: 'Incomplete profile' };
+        }
+
+        // Подготавливаем данные заказа (теперь без customer данных - берем из пользователя)
+        const orderData = {
+            items: this.items.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price
+            })),
+            total_amount: this.getTotal(),
+            notes: document.getElementById('orderNotes')?.value || ''
+        };
+
+        // Show loading state
+        const checkoutBtn = document.getElementById('checkoutBtn') || document.querySelector('.checkout-btn');
+        let originalText = 'Place Order';
+
+        if (checkoutBtn) {
+            originalText = checkoutBtn.innerHTML;
+            checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            checkoutBtn.disabled = true;
+        }
+
+        try {
+            // Send to server WITH AUTH TOKEN
+            const response = await fetch('http://localhost:5000/api/orders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...window.auth.getAuthHeader()  // Добавляем токен авторизации
+                },
+                body: JSON.stringify(orderData)
+            });
+
+            // Check if response is OK
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server responded with ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Save order ID
+                const orderId = result.orderId;
+
+                // Clear cart
+                this.clearCart();
+
+                // Show success message
+                if (typeof showToast === 'function') {
+                    showToast(`Order #${orderId} placed successfully!`, 'success');
+                }
+
+                // Show order confirmation with user details
+                setTimeout(() => {
+                    this.showOrderConfirmation(orderId, user);
+                }, 1500);
+
+                return { success: true, orderId: orderId, data: result };
+            } else {
+                if (typeof showToast === 'function') {
+                    showToast('Order failed: ' + (result.error || 'Unknown error'), 'error');
+                }
+                return { success: false, message: result.error };
+            }
+        } catch (error) {
+            console.error('Order submission error:', error);
+
+            // Determine error type
+            let errorMessage = 'Server connection error. Please try again later.';
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'Cannot connect to server. Please check your internet connection.';
+            } else if (error.message.includes('401') || error.message.includes('403')) {
+                errorMessage = 'Session expired. Please login again.';
+                // Очищаем токен если истек
+                if (window.auth) {
+                    window.auth.logout();
+                }
+            } else if (error.message.includes('404')) {
+                errorMessage = 'Server not found. Please make sure the backend is running.';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later.';
+            }
+
+            if (typeof showToast === 'function') {
+                showToast(errorMessage, 'error');
+            }
+
+            return { success: false, message: errorMessage };
+        } finally {
+            // Always restore button state
+            if (checkoutBtn) {
+                checkoutBtn.innerHTML = originalText;
+                checkoutBtn.disabled = false;
+            }
+        }
+    }
+
+    // Helper method for order confirmation
+    // Helper method for order confirmation
+    showOrderConfirmation(orderId, user = null) {
+        const userName = user ? user.full_name || user.username : 'Customer';
+        const userPhone = user ? user.phone : '';
+
+        // Create a nicer confirmation modal with user info
+        const modalHTML = `
+            <div class="order-confirmation-modal" style="
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            ">
+                <div style="
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 15px;
+                    max-width: 500px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                ">
+                    <div style="color: #4CAF50; font-size: 4rem; margin-bottom: 1rem;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 style="margin-bottom: 1rem; color: #333;">Order Confirmed!</h2>
+                    <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">
+                        Order <strong>#${orderId}</strong> has been received.
+                    </p>
+                    <p style="color: #666; margin-bottom: 0.5rem;">
+                        Customer: <strong>${userName}</strong>
+                    </p>
+                    ${userPhone ? `<p style="color: #666; margin-bottom: 1rem;">
+                        We will contact you at: <strong>${userPhone}</strong>
+                    </p>` : ''}
+                    <p style="color: #666; margin-bottom: 2rem;">
+                        Estimated pickup time: <strong>15-20 minutes</strong>
+                    </p>
+                    <button onclick="this.closest('.order-confirmation-modal').remove()" style="
+                        background: #4CAF50;
+                        color: white;
+                        border: none;
+                        padding: 12px 30px;
+                        font-size: 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: background 0.3s;
+                        margin: 5px;
+                    " onmouseover="this.style.background='#45a049'" onmouseout="this.style.background='#4CAF50'">
+                        Continue Shopping
+                    </button>
+                    <button onclick="window.location.href='profile.html#orders'" style="
+                        background: #3498db;
+                        color: white;
+                        border: none;
+                        padding: 12px 30px;
+                        font-size: 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: background 0.3s;
+                        margin: 5px;
+                    " onmouseover="this.style.background='#2980b9'" onmouseout="this.style.background='#3498db'">
+                        View My Orders
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Remove any existing modal first
+        const existingModal = document.querySelector('.order-confirmation-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add new modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
 
     // Save cart to localStorage
@@ -133,6 +346,12 @@ class ShoppingCart {
         countElements.forEach(element => {
             if (element) {
                 element.textContent = itemCount;
+                // Show/hide cart count badge
+                if (itemCount > 0) {
+                    element.parentElement.style.display = 'flex';
+                } else {
+                    element.parentElement.style.display = 'none';
+                }
             }
         });
 
@@ -151,6 +370,7 @@ class ShoppingCart {
         const cartSubtotalEl = document.getElementById('cartSubtotal');
         const cartTaxEl = document.getElementById('cartTax');
         const cartTotalEl = document.getElementById('cartTotal');
+        const checkoutBtn = document.getElementById('checkoutBtn');
 
         if (!cartItemsContainer) return;
 
@@ -166,8 +386,18 @@ class ShoppingCart {
             if (cartSubtotalEl) cartSubtotalEl.textContent = '0.00';
             if (cartTaxEl) cartTaxEl.textContent = '0.00';
             if (cartTotalEl) cartTotalEl.textContent = '0.00';
+            if (checkoutBtn) {
+                checkoutBtn.disabled = true;
+                checkoutBtn.style.opacity = '0.5';
+            }
 
             return;
+        }
+
+        // Enable checkout button if there are items
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.style.opacity = '1';
         }
 
         let cartHTML = '';
@@ -269,6 +499,7 @@ class ShoppingCart {
         if (typeof callback === 'function') {
             this.updateCallbacks.push(callback);
         }
+        return this;
     }
 
     // Вызвать все коллбэки обновления
@@ -298,10 +529,10 @@ class ShoppingCart {
             });
         }
 
-        // Checkout button
+        // Checkout button - ОБНОВЛЕННАЯ ВЕРСИЯ
         const checkoutBtn = document.getElementById('checkoutBtn');
         if (checkoutBtn) {
-            checkoutBtn.addEventListener('click', () => {
+            checkoutBtn.addEventListener('click', async () => {
                 if (this.items.length === 0) {
                     if (typeof showToast === 'function') {
                         showToast('Your cart is empty!', 'error');
@@ -309,20 +540,186 @@ class ShoppingCart {
                     return;
                 }
 
-                // For demo purposes - in real app, this would redirect to checkout
-                if (typeof showToast === 'function') {
-                    showToast('Proceeding to checkout...', 'info');
+                // Проверяем авторизацию
+                if (!window.auth || !window.auth.isAuthenticated()) {
+                    if (typeof showToast === 'function') {
+                        showToast('Please login to place an order', 'error');
+                    }
+                    setTimeout(() => {
+                        window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
+                    }, 1500);
+                    return;
                 }
 
-                // Simulate checkout process
-                setTimeout(() => {
-                    if (typeof showToast === 'function') {
-                        showToast('Order placed successfully!', 'success');
+                // Проверяем заполнен ли профиль
+                const user = window.auth.currentUser;
+                if (!user.full_name || !user.phone) {
+                    if (confirm('Please complete your profile with name and phone number before ordering. Go to profile page?')) {
+                        window.location.href = 'profile.html';
                     }
-                    this.clearCart();
-                }, 2000);
+                    return;
+                }
+
+                // Отправляем заказ
+                await this.submitOrderToServer();
             });
         }
+
+        // Обновляем состояние кнопки checkout при изменении корзины
+        this.onCartUpdate(() => {
+            if (checkoutBtn) {
+                checkoutBtn.disabled = this.items.length === 0;
+            }
+        });
+    }
+
+    // Show customer form if not present
+    showCustomerForm() {
+        // Create modal for customer details
+        const modalHTML = `
+            <div class="customer-form-modal" style="
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9998;
+            ">
+                <div style="
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 15px;
+                    max-width: 500px;
+                    width: 90%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                ">
+                    <h3 style="margin-bottom: 1.5rem; color: #333;">Enter Your Details</h3>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Full Name *</label>
+                        <input type="text" id="modalCustomerName" placeholder="John Doe" required style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #ddd;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Phone Number *</label>
+                        <input type="tel" id="modalCustomerPhone" placeholder="+1 (555) 123-4567" required style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #ddd;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Email (optional)</label>
+                        <input type="email" id="modalCustomerEmail" placeholder="john@example.com" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #ddd;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                        ">
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Special Instructions</label>
+                        <textarea id="modalOrderNotes" placeholder="Any special requests or delivery instructions..." rows="3" style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #ddd;
+                            border-radius: 8px;
+                            font-size: 16px;
+                            box-sizing: border-box;
+                            resize: vertical;
+                        "></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="this.closest('.customer-form-modal').remove()" style="
+                            padding: 12px 24px;
+                            background: #f0f0f0;
+                            border: none;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 16px;
+                        ">Cancel</button>
+                        <button onclick="cart.submitModalOrder()" style="
+                            padding: 12px 24px;
+                            background: #4CAF50;
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            font-weight: bold;
+                        ">Place Order</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove any existing modal first
+        const existingModal = document.querySelector('.customer-form-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add new modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    // Submit order from modal form
+    async submitModalOrder() {
+        // Get values from modal
+        const customerName = document.getElementById('modalCustomerName')?.value.trim() || '';
+        const customerPhone = document.getElementById('modalCustomerPhone')?.value.trim() || '';
+        const customerEmail = document.getElementById('modalCustomerEmail')?.value.trim() || '';
+        const orderNotes = document.getElementById('modalOrderNotes')?.value.trim() || '';
+
+        // Validation
+        if (!customerName) {
+            if (typeof showToast === 'function') {
+                showToast('Please enter your name', 'error');
+            }
+            return;
+        }
+
+        if (!customerPhone) {
+            if (typeof showToast === 'function') {
+                showToast('Please enter your phone number', 'error');
+            }
+            return;
+        }
+
+        // Set values in hidden inputs or store temporarily
+        this.tempOrderData = {
+            customerName,
+            customerPhone,
+            customerEmail,
+            orderNotes
+        };
+
+        // Remove modal
+        const modal = document.querySelector('.customer-form-modal');
+        if (modal) {
+            modal.remove();
+        }
+
+        // Submit order
+        await this.submitOrderToServer();
     }
 
     // Get cart summary for order
@@ -345,6 +742,22 @@ class ShoppingCart {
             total,
             itemCount: this.getItemCount()
         };
+    }
+
+    // Check if cart has items
+    hasItems() {
+        return this.items.length > 0;
+    }
+
+    // Get item by ID
+    getItem(itemId) {
+        return this.items.find(item => item.id === itemId);
+    }
+
+    // Calculate item total
+    getItemTotal(itemId) {
+        const item = this.getItem(itemId);
+        return item ? item.price * item.quantity : 0;
     }
 }
 
