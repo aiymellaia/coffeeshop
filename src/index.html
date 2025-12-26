@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Brew & Co — Premium Coffee Experience</title>
+    <meta name="description" content="Experience artisanal coffee in a cozy atmosphere. Handcrafted drinks, fresh pastries, and warm hospitality at Brew & Co.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/homepage.css">
+</head>
+<body>
+<!-- Preloader -->
+<div class="preloader">
+    <div class="coffee-loader"></div>
+    <div class="loading-text">Brewing your experience...</div>
+</div>
+
+<!-- Header -->
+<header>
+    <!-- Первый контейнер с навигацией -->
+    <div class="container nav">
+        <div class="brand">
+            <a href="index.html" class="logo">B&amp;Co</a>
+            <div class="brand-text">
+                <h1>Brew &amp; Co</h1>
+                <div class="tagline">Handcrafted coffee &amp; cozy space</div>
+            </div>
+        </div>
+
+        <nav>
+            <ul id="navMenu">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="menu.html">Menu</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#gallery">Gallery</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="register.html" class="btn btn-gold">Register</a></li>
+                <li>
+                    <a href="menu.html#cart-section" class="cart-menu-btn">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span id="cart-count" class="cart-count">0</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <button class="mobile-toggle" aria-label="Open menu" id="mobileToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+    <!-- Конец контейнера с навигацией -->
+
+    <!-- Black Friday Banner - ОТДЕЛЬНО, вне .container -->
+    <div class="countdown-banner">
+        <div class="container">
+            <div class="countdown-text">BLACK FRIDAY SALE STARTS IN:</div>
+            <div id="blackFridayCountdown" class="countdown-display">
+                <!-- Countdown will be inserted here -->
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-card">
+            <span class="kicker">New — Seasonal Roast</span>
+            <h2>Wake up to a better cup. Fresh roasts daily.</h2>
+            <p>Small-batch, locally roasted beans and handcrafted drinks made with care. Cozy inside seating and fast takeaway.</p>
+
+            <div class="hero-actions">
+                <a href="menu.html" class="btn"><i class="fas fa-coffee"></i> View Full Menu</a>
+                <a href="#about" class="btn btn-gold"><i class="fas fa-book"></i> Our Story</a>
+            </div>
+
+            <div class="hero-info">
+                <div class="info-item">
+                    <div class="info-label">Open today</div>
+                    <div class="info-value">8:00 — 20:00</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Location</div>
+                    <div class="info-value">Downtown — 12 Brew Street</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-illustration">
+            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1770&q=80"
+                 alt="Artisanal coffee being poured" loading="lazy">
+        </div>
+    </section>
+
+    <!-- Featured Menu Items -->
+    <section class="featured-menu section">
+        <div class="section-header">
+            <h2 class="section-title">Featured Drinks</h2>
+            <p class="section-subtitle">Try our customer favorites</p>
+            <a href="menu.html" class="view-all">View full menu →</a>
+        </div>
+
+        <div class="featured-grid">
+            <!-- Featured items will be populated by JavaScript -->
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="section">
+        <div class="about-content">
+            <div class="about-text">
+                <h2 class="section-title">Our story</h2>
+                <p>Started by two friends with a love for coffee and craft, Brew & Co sources direct-trade beans and roasts them in small batches. We focus on seasonal menus, sustainable packaging, and a space where people feel at home.</p>
+
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number">2015</div>
+                        <div class="stat-label">Year Founded</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">50+</div>
+                        <div class="stat-label">Coffee Varieties</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">1000+</div>
+                        <div class="stat-label">Happy Customers</div>
+                    </div>
+                </div>
+
+                <a href="#contact" class="btn" style="margin-top: 30px;">
+                    <i class="fas fa-map-marker-alt"></i> Visit Us
+                </a>
+            </div>
+
+            <div class="event-card">
+                <img src="https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80"
+                     alt="Barista preparing coffee" loading="lazy">
+                <div class="event-title">Coffee Tasting Event</div>
+                <div class="event-details">
+                    <p><i class="fas fa-calendar-alt"></i> Every Saturday</p>
+                    <p><i class="fas fa-clock"></i> 11:00 AM - 1:00 PM</p>
+                    <p><i class="fas fa-users"></i> Limited to 15 seats</p>
+                </div>
+                <button class="btn" style="margin-top: 20px; width: 100%;">
+                    <i class="fas fa-ticket-alt"></i> Reserve Your Spot
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="gallery" class="section">
+        <div class="section-header">
+            <h2 class="section-title">Gallery</h2>
+            <p class="section-subtitle">A glimpse into our coffee shop</p>
+        </div>
+
+        <div class="masonry">
+            <img src="https://images.unsplash.com/photo-1498804103079-a6351b050096?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                 alt="Coffee shop interior" loading="lazy">
+            <img src="https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                 alt="Coffee being poured" loading="lazy">
+            <img src="https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80"
+                 alt="Coffee beans" loading="lazy">
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials section">
+        <div class="section-header">
+            <h2 class="section-title">What Our Customers Say</h2>
+            <p class="section-subtitle">Real stories from our community</p>
+        </div>
+
+        <div class="testimonial-grid">
+            <div class="testimonial-card">
+                <div class="testimonial-content">
+                    <i class="fas fa-quote-left"></i>
+                    <p>"The best coffee in town! The atmosphere is perfect for working or catching up with friends."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">S</div>
+                    <div class="author-info">
+                        <div class="author-name">Sarah Johnson</div>
+                        <div class="author-role">Regular Customer</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card">
+                <div class="testimonial-content">
+                    <i class="fas fa-quote-left"></i>
+                    <p>"Their almond croissant is to die for! Pair it with a flat white and you have the perfect morning."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">M</div>
+                    <div class="author-info">
+                        <div class="author-name">Michael Chen</div>
+                        <div class="author-role">Food Blogger</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card">
+                <div class="testimonial-content">
+                    <i class="fas fa-quote-left"></i>
+                    <p>"As a remote worker, this is my go-to spot. Great coffee, fast wifi, and comfortable seating."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">J</div>
+                    <div class="author-info">
+                        <div class="author-name">Jessica Park</div>
+                        <div class="author-role">Digital Nomad</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="section">
+        <div class="section-header">
+            <h2 class="section-title">Contact &amp; Visit</h2>
+            <p class="section-subtitle">Get in touch or come see us</p>
+        </div>
+
+        <div class="contact-container">
+            <form id="contactForm" class="contact-card">
+                <h3>Get in touch</h3>
+                <p>We'd love to hear from you — send us a message!</p>
+
+                <div class="input-group">
+                    <label for="name">Full name</label>
+                    <input type="text" id="name" required placeholder="Your name">
+                </div>
+
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="you@email.com">
+                </div>
+
+                <div class="input-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" rows="4" placeholder="I want to book a table..."></textarea>
+                </div>
+
+                <button class="btn send-btn" type="submit">
+                    <i class="fas fa-paper-plane"></i> Send message
+                </button>
+                <p class="note">No spam — we reply within 24h ☕</p>
+            </form>
+
+            <aside class="info-card">
+                <h3>Find us</h3>
+                <p>12 Brew Street, Downtown<br>Open daily 8:00–20:00</p>
+
+                <div class="map-box">
+                    <i class="fas fa-map-marker-alt" style="font-size: 48px; color: var(--coffee-light);"></i>
+                    <p class="map-text">Downtown District</p>
+                </div>
+
+                <div class="contact-details">
+                    <p><i class="fas fa-phone"></i> +1 (555) 123-4567</p>
+                    <p><i class="fas fa-envelope"></i> hello@brewandco.com</p>
+                    <p><i class="fas fa-clock"></i> Mon-Fri: 8:00-20:00</p>
+                    <p><i class="fas fa-clock"></i> Sat-Sun: 9:00-18:00</p>
+                </div>
+
+                <div class="social-links">
+                    <a href="#" class="social-link" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-link" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">Brew & <span>Co</span></div>
+                    <p class="footer-text">Premium coffee experiences since 2015. Committed to quality, sustainability, and community.</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-link" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="menu.html">Menu</a></li>
+                        <li><a href="#about">Our Story</a></li>
+                        <li><a href="#gallery">Gallery</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Contact Info</h3>
+                    <ul class="footer-links">
+                        <li>12 Brew Street, Downtown</li>
+                        <li>+1 (555) 123-4567</li>
+                        <li>hello@brewandco.com</li>
+                        <li>Open daily: 8:00-20:00</li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h3>Newsletter</h3>
+                    <p class="footer-text">Subscribe for updates and special offers.</p>
+                    <form class="newsletter-form">
+                        <input type="email" placeholder="Your email" required>
+                        <button type="submit" class="btn btn-gold" style="margin-top: 10px;">
+                            <i class="fas fa-paper-plane"></i> Subscribe
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="copyright">
+                &copy; <span id="currentYear"></span> Brew & Co — Crafted with care and caffeine
+            </div>
+        </div>
+    </footer>
+</main>
+
+<script src="js/main.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/homepage.js"></script>
+</body>
+</html>

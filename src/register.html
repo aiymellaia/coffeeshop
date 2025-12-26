@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Register — Brew & Co</title>
+    <meta name="description" content="Create your Brew & Co account to save favorites, track orders, and get special offers.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Registration specific styles */
+        .registration-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--cream) 0%, var(--beige) 100%);
+            padding: 40px 20px;
+        }
+
+        .registration-container {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .registration-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 50px;
+            box-shadow: 0 25px 60px var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .registration-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gold), var(--coffee-light));
+        }
+
+        .registration-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .registration-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--coffee-medium), var(--coffee-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            color: var(--cream);
+            font-size: 28px;
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .registration-header h1 {
+            font-size: 32px;
+            color: var(--coffee-dark);
+            margin-bottom: 10px;
+        }
+
+        .registration-header p {
+            color: var(--muted);
+            font-size: 16px;
+        }
+
+        .registration-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .password-strength {
+            margin-top: 5px;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .strength-meter {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .strength-weak { background: #EF4444; width: 33%; }
+        .strength-medium { background: #F59E0B; width: 66%; }
+        .strength-strong { background: #10B981; width: 100%; }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .remember-me input {
+            width: auto;
+        }
+
+        .forgot-password {
+            color: var(--coffee-medium);
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .forgot-password:hover {
+            text-decoration: underline;
+        }
+
+        .terms-agreement {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--muted);
+            margin-top: 10px;
+        }
+
+        .terms-agreement a {
+            color: var(--coffee-medium);
+            text-decoration: none;
+        }
+
+        .terms-agreement a:hover {
+            text-decoration: underline;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .form-footer a {
+            color: var(--coffee-medium);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .registration-card {
+                padding: 30px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .registration-card {
+                padding: 25px;
+            }
+
+            .registration-header h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="registration-page">
+    <div class="container registration-container">
+        <div class="registration-card">
+            <div class="registration-header">
+                <div class="registration-logo">B&amp;Co</div>
+                <h1>Create Account</h1>
+                <p>Join Brew & Co to save favorites and track orders</p>
+            </div>
+
+            <form class="registration-form" id="registrationForm">
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="firstName">First Name *</label>
+                        <input type="text" id="firstName" required>
+                        <div class="error-message" id="firstNameError"></div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="lastName">Last Name *</label>
+                        <input type="text" id="lastName" required>
+                        <div class="error-message" id="lastNameError"></div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" required>
+                    <div class="error-message" id="emailError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" required>
+                    <div class="password-strength">
+                        <div class="strength-meter" id="passwordStrength"></div>
+                    </div>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <div class="input-group">
+                    <label for="confirmPassword">Confirm Password *</label>
+                    <input type="password" id="confirmPassword" required>
+                    <div class="error-message" id="confirmError"></div>
+                </div>
+
+                <div class="terms-agreement">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">
+                        I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a> *
+                    </label>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; margin-top: 20px;">
+                    <i class="fas fa-user-plus"></i> Create Account
+                </button>
+
+                <div class="form-footer">
+                    Already have an account? <a href="index.html">Sign In</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="js/main.js"></script>
+<script src="js/forms.js"></script>
+<script>
+    // Registration form validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('registrationForm');
+        const passwordInput = document.getElementById('password');
+        const passwordStrength = document.getElementById('passwordStrength');
+
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // Get form values
+                const firstName = document.getElementById('firstName').value.trim();
+                const lastName = document.getElementById('lastName').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const password = passwordInput.value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const terms = document.getElementById('terms').checked;
+
+                // Clear previous errors
+                clearErrors();
+
+                let isValid = true;
+
+                // Validate first name
+                if (firstName.length < 2) {
+                    showError('firstNameError', 'First name must be at least 2 characters');
+                    isValid = false;
+                }
+
+                // Validate last name
+                if (lastName.length < 2) {
+                    showError('lastNameError', 'Last name must be at least 2 characters');
+                    isValid = false;
+                }
+
+                // Validate email
+                if (!isValidEmail(email)) {
+                    showError('emailError', 'Please enter a valid email address');
+                    isValid = false;
+                }
+
+                // Validate password
+                if (password.length < 6) {
+                    showError('passwordError', 'Password must be at least 6 characters');
+                    isValid = false;
+                }
+
+                // Validate password confirmation
+                if (password !== confirmPassword) {
+                    showError('confirmError', 'Passwords do not match');
+                    isValid = false;
+                }
+
+                // Validate terms
+                if (!terms) {
+                    showError('confirmError', 'You must agree to the terms and conditions');
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    // In a real app, this would be an API call
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+                    submitBtn.disabled = true;
+
+                    setTimeout(() => {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+
+                        // Show success message
+                        if (typeof showToast === 'function') {
+                            showToast('Account created successfully! Redirecting to homepage...', 'success');
+                        }
+
+                        // Redirect to homepage
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 2000);
+                    }, 1500);
+                }
+            });
+        }
+
+        // Password strength indicator
+        if (passwordInput && passwordStrength) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 'weak';
+
+                if (password.length >= 10) {
+                    strength = 'strong';
+                } else if (password.length >= 6) {
+                    strength = 'medium';
+                }
+
+                passwordStrength.className = 'strength-meter';
+                passwordStrength.classList.add(`strength-${strength}`);
+            });
+        }
+
+        // Helper functions
+        function isValidEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = message;
+                element.style.display = 'block';
+            }
+        }
+
+        function clearErrors() {
+            const errorElements = document.querySelectorAll('.error-message');
+            errorElements.forEach(element => {
+                element.textContent = '';
+                element.style.display = 'none';
+            });
+        }
+    });
+</script>
+</body>
+</html>
